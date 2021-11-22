@@ -3,7 +3,7 @@
 #
 # Judas detection probability - discrete survival analysis
 #
-# Dave Ramsey (17/11/2021)
+# Dave Ramsey (22/11/2021)
 #=========================================================
 
 library(tidyverse)

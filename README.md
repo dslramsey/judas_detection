@@ -19,6 +19,8 @@ using the ‘Judas’ technique” *Conservation Biology*
 -   `judas_erad_prob.r` Uses estimates of association rate by Judas to
     make inferences about the probability of eradication, given no
     detection of wild individuals, for an area of interest
+-   `judas_functions.r` contains various functions required by the above
+    scripts
 
 ## Prerequisites
 
@@ -35,7 +37,7 @@ for each Judas dyad `*_judas_dyads.csv`, infomation on Judas IDs
 including entry and exit times `*_judas_id.csv` and locations of Judas
 individuals during routine monitoring `*_judas_locs.csv`.
 
-Start by step through the `discrete_survival_analysis.r` script to
+Start by stepping through the `discrete_survival_analysis.r` script to
 generate estimates of the association probabilities for each Judas
 individual. Save these to the `out/` directory using the commands
 provided. Scripts to produce the various plots in the manuscript are
