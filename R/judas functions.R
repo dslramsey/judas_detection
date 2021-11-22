@@ -39,6 +39,7 @@ calc.dist<-  function(xy1, xy2)
 #----------------------------------------------------
 
 rescale_shp<- function(shp, units="m") {
+  # rescale sf object to different units (e.g. m -> km)
   p4str<- st_crs(shp)$proj4string
   bits<- strsplit(p4str,"+", fixed=TRUE)[[1]]
   ind<- pmatch("units", bits)
@@ -50,7 +51,7 @@ rescale_shp<- function(shp, units="m") {
 
 #--------------------------------------------
 kernel2D<- function(parms, maxdim, np, eps) {
-  # 2D kernel density function fully vectorised
+  # 2D kernel function fully vectorised
   calc.dist<- function(x,y){
     return(sqrt((x^2 + y^2))) 
   }  
@@ -60,7 +61,7 @@ kernel2D<- function(parms, maxdim, np, eps) {
   gxy <- -mx:mx * eps
   dmat<- outer(gxy, gxy, FUN=calc.dist)
   if(!is.null(parms$ce)) 
-    {lam<- exp(parms$b1 + parms$b2 * dmat + parms$ce)} #ce are other covariate effects
+    {lam<- exp(parms$b0 + parms$b1 * dmat + parms$ce)} #ce are other covariate effects
   else 
     {lam<- exp(parms$b1 + parms$b2 * dmat)}
   lam[dmat > max.disp]<- 0 #truncate beyond max.disp
@@ -70,7 +71,7 @@ kernel2D<- function(parms, maxdim, np, eps) {
 
 
 #--------------------------------------------
-make.surface<- function(dat, parms, shape, nperiod, cellsize, CE=0.95, Pu=1, prior, verbose=F) {
+make.surface<- function(dat, parms, shape, nperiod, cellsize, Pu=1, prior, verbose=FALSE) {
   n<- nrow(dat)
   rast_map<- rast(vect(shape), resolution=cellsize)
   rast_map<- rasterize(vect(shape), rast_map, 0, background = 0)
@@ -90,22 +91,26 @@ make.surface<- function(dat, parms, shape, nperiod, cellsize, CE=0.95, Pu=1, pri
   den <- mask(rast_map, vect(shape))
   den<- app(den, function(x){1-exp(-x)}) #Probability scale
   
-  N<- length(which(values(which.lyr(den >= 0))==1))
-  nn<- length(which(values(which.lyr(den >= 0.0001))==1))
+  N<- length(which(values(which.lyr(den >= 0))==1)) # Total cells
+  nn<- length(which(values(which.lyr(den >= 0.0001))==1)) # Covered cells
   
-  seu_avg<- global(den, 'mean', na.rm=TRUE)
-  SSe<- 1 - (1 - seu_avg * nn/N)^(Pu/N * N)
+  seu_avg<- global(den, 'mean', na.rm=TRUE)$mean
+  SSe<- 1 - (1 - seu_avg * nn/N)^Pu
   PE <- prior/(1-SSe*(1-prior))
-  result<- list(seu_avg=round(seu_avg,3),Cov=round(nn/N,3),SSe=round(SSe,3),PE=round(PE,3))
+  result<- tibble(Cov=round(nn/N,3),SSe=round(SSe,3),PE=round(PE,3))
   list(Table=result, Raster=den)
 }
 
 #-----------------------------
 
 rcov_effects<- function(beta, X) {
+  X<- as.matrix(X)
   n<- nrow(X)
-  nr<- nrow(beta)
-  rbetas<- t(replicate(n, rnorm(nr,beta$mean, beta$sd)))
+  nr<- nrow(as.matrix(beta))
+  if(nr==1)
+    rbetas<- as.matrix((replicate(n, rnorm(nr,beta$mean, beta$sd))))
+  else
+    rbetas<- t(replicate(n, rnorm(nr,beta$mean, beta$sd)))
   cov_eff<- rep(NA,n)
   for(i in 1:n) {
     cov_eff[i]<- X[i,] %*% rbetas[i,]
@@ -117,15 +122,22 @@ rcov_effects<- function(beta, X) {
 
 intersect.period<- function(x, y) {
   # find overlap between two date ranges x and y
-  if(x[2] < y[1]) period=0
-  if(y[2] < x[1]) period=0
-  if((x[1] <= y[1]) & (y[1] <= x[2]) & (x[2] <= y[2])) period=x[2]-y[1] 
-  if((y[1] <= x[1]) & (x[1] <= y[2]) & (y[2] <= x[2])) period=y[2]-x[1]
-  if((x[1] <= y[1]) & (y[1] <= y[2]) & (y[2] <= x[2])) period=y[2]-y[1]
-  if((y[1] <= x[1]) & (x[1] <= x[2]) & (x[2] <= y[2])) period=x[2]-x[1]
+  period<- case_when(
+    (x[2] < y[1]) ~ 0,
+    (y[2] < x[1]) ~ 0,
+    ((x[1] <= y[1]) & (y[1] <= x[2]) & (x[2] <= y[2])) ~ as.numeric(x[2]-y[1]), 
+    ((y[1] <= x[1]) & (x[1] <= y[2]) & (y[2] <= x[2])) ~ as.numeric(y[2]-x[1]),
+    ((x[1] <= y[1]) & (y[1] <= y[2]) & (y[2] <= x[2])) ~ as.numeric(y[2]-y[1]),
+    ((y[1] <= x[1]) & (x[1] <= x[2]) & (x[2] <= y[2])) ~ as.numeric(x[2]-x[1]))
   return(period)
 }
 
-
-
+#-----------------------------
+summarise_sims<- function(.y, .x, period, ndec=3) {
+  xbar<- mean(.x, na.rm=TRUE)
+  xbar<- round(xbar, ndec)
+  cl<- quantile(.x, c(0.05, 0.95))
+  cl<- round(cl, ndec)
+  tibble(Period=period, stat=.y, Mean=xbar,lcl=cl[1],ucl=cl[2])
+}
 
