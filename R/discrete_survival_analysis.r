@@ -101,7 +101,7 @@ N<- nrow(pig_dyads)
 M<- nrow(pig_ids)
 X<- model.matrix(~ distance + Sex1, data=pig_dyads)[,-1]
 K<- ncol(X)
-sex<- matrix(ifelse(pig_ids$Sex=="B", 0, 1), ncol=1)
+sex<- as.matrix(ifelse(pig_ids$Sex=="B", 0, 1))
 
 #--- Calculate home range scale (sigma) from Judas locations
 pig_locs<- read_csv("data/santacruz_judas_locs.csv")
