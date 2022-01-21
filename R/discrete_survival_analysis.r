@@ -187,7 +187,7 @@ plam<- plam %>% mutate(Sex = factor(Sex, levels=c("Female","Super","Male")),
 win.graph(10,5)
 plam %>% ggplot(aes(ID, p, color=interaction(Sex,Trans))) +
   geom_boxplot(fill="grey90",outlier.color = NA) +
-  labs(x="Judas ID", y="Detection probability at HR centre") + 
+  labs(x="Judas ID", y="Detection probability at centre of UD") + 
   theme_bw() +
   theme(axis.text.x = element_blank(),
         legend.position = "bottom",
