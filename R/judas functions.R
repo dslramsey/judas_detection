@@ -66,9 +66,10 @@ make.surface<- function(dat, parms, shape, nperiod, cellsize, Pu=1, prior, verbo
   den<- app(den, function(x){1-exp(-x)}) #Probability scale
   
   N<- length(which(values(which.lyr(den >= 0))==1)) # Total cells
-  nn<- length(which(values(which.lyr(den >= 0.0001))==1)) # Covered cells
-  
-  seu_avg<- global(den, 'mean', na.rm=TRUE)$mean
+  survey.cells<- which(values(which.lyr(den >= 0.0001))==1) # could use specific quantile here
+  seu_avg<- mean(unlist(terra::extract(den, survey.cells)), na.rm=TRUE)
+  nn<- length(survey.cells)
+ 
   SSe<- 1 - (1 - seu_avg * nn/N)^Pu
   PE <- prior/(1-SSe*(1-prior))
   result<- tibble(Cov=round(nn/N,3),SSe=round(SSe,3),PE=round(PE,3))
